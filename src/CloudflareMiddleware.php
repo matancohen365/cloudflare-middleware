@@ -8,17 +8,6 @@ use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Promise\PromiseInterface;
 use function GuzzleHttp\Psr7\modify_request;
 
-/**
- * Class CloudflareMiddleware
- *
- * <use>
- *
- * $client->getConfig('handler')->push(\Tuna\CloudflareMiddleware::create(), \Tuna\CloudflareMiddleware::class);
- *
- * </use>
- *
- * @see
- */
 class CloudflareMiddleware
 {
     /**
