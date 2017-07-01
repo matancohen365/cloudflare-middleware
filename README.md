@@ -1,8 +1,14 @@
-# cloudflare-middleware
-Cloudflare Middleware For Guzzle
+# Bypass Cloudflare
+Bypass Cloudflare Middleware For Guzzle
 
+# Installation
+Using [composer][1]:
 
-# use
+``` 
+composer require tunaabutbul/cloudflare-middleware
+```
+
+# Usage
 
 ``` php
 use GuzzleHttp\Client;
@@ -17,5 +23,13 @@ $res = $client->request('GET', 'http://www.exemple.com/');
 echo $res->getBody();
 ```
 
-## thanks XOXO 
-@stackoverflowin for https://github.com/stackoverflowin/CloudFlare-PHP-Bypass
+# Thanks 
+[stackoverflowin][2] for [CloudFlare-PHP-Bypass][3]
+
+# License
+-------
+This middleware is licensed under the MIT License - see the LICENSE file for details
+
+[1]: https://getcomposer.org/
+[2]: https://github.com/stackoverflowin
+[3]: https://github.com/stackoverflowin/CloudFlare-PHP-Bypass
