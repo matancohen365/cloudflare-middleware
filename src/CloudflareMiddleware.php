@@ -70,9 +70,7 @@ class CloudflareMiddleware
             throw new Exception('you have to use the allow_redirects options');
         }
 
-        $_request = $this->modifyRequest($request, $response);
-
-        return $this($_request, $options);
+        return $this($this->modifyRequest($request, $response), $options);
     }
 
     /**
