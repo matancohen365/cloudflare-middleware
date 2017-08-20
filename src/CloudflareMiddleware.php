@@ -25,13 +25,13 @@ class CloudflareMiddleware
      */
     const REFRESH_EXPRESSION = '/8;URL=(\/cdn-cgi\/l\/chk_jschl\?pass=[0-9]+\.[0-9]+-.*)/';
 
-    /** @var callable */
+    /** @var PromiseInterface */
     private $nextHandler;
 
     /**
-     * @param callable $nextHandler Next handler to invoke.
+     * @param PromiseInterface $nextHandler Next handler to invoke.
      */
-    public function __construct(callable $nextHandler)
+    public function __construct(PromiseInterface $nextHandler)
     {
         $this->nextHandler = $nextHandler;
     }
@@ -41,7 +41,7 @@ class CloudflareMiddleware
      * @param array $options
      * @return PromiseInterface
      */
-    public function __invoke(RequestInterface $request, array $options)
+    public function __invoke(RequestInterface $request, array $options = [])
     {
         $fn = $this->nextHandler;
 
@@ -58,7 +58,7 @@ class CloudflareMiddleware
      * @return PromiseInterface|ResponseInterface
      * @throws \Exception
      */
-    protected function checkResponse(RequestInterface $request, array $options, ResponseInterface $response)
+    protected function checkResponse(RequestInterface $request, array $options = [], ResponseInterface $response)
     {
         if (!$this->needVerification($response)) return $response;
 
