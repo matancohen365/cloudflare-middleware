@@ -5,7 +5,6 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use GuzzleHttp\Promise\PromiseInterface;
 use function GuzzleHttp\Psr7\modify_request;
 
 class CloudflareMiddleware
@@ -25,13 +24,13 @@ class CloudflareMiddleware
      */
     const REFRESH_EXPRESSION = '/8;URL=(\/cdn-cgi\/l\/chk_jschl\?pass=[0-9]+\.[0-9]+-.*)/';
 
-    /** @var PromiseInterface */
+    /** @var callable */
     private $nextHandler;
 
     /**
-     * @param PromiseInterface $nextHandler Next handler to invoke.
+     * @param callable $nextHandler Next handler to invoke.
      */
-    public function __construct(PromiseInterface $nextHandler)
+    public function __construct(callable $nextHandler)
     {
         $this->nextHandler = $nextHandler;
     }
@@ -39,7 +38,7 @@ class CloudflareMiddleware
     /**
      * @param RequestInterface $request
      * @param array $options
-     * @return PromiseInterface
+     * @return ResponseInterface
      */
     public function __invoke(RequestInterface $request, array $options = [])
     {
@@ -55,7 +54,7 @@ class CloudflareMiddleware
      * @param RequestInterface $request
      * @param array $options
      * @param ResponseInterface $response
-     * @return PromiseInterface|ResponseInterface
+     * @return ResponseInterface
      * @throws \Exception
      */
     protected function checkResponse(RequestInterface $request, array $options = [], ResponseInterface $response)
