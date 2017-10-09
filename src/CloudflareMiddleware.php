@@ -30,7 +30,7 @@ class CloudflareMiddleware
     /**
      * @param callable $nextHandler Next handler to invoke.
      */
-    public function __construct(callable $nextHandler)
+    public function __construct($nextHandler)
     {
         $this->nextHandler = $nextHandler;
     }
@@ -42,9 +42,9 @@ class CloudflareMiddleware
      */
     public function __invoke(RequestInterface $request, array $options = [])
     {
-        $fn = $this->nextHandler;
+        $next = $this->nextHandler;
 
-        return $fn($request, $options)
+        return $next($request, $options)
             ->then(function (ResponseInterface $response) use ($request, $options) {
                 return $this->checkResponse($request, $options, $response);
             });
@@ -61,11 +61,11 @@ class CloudflareMiddleware
     {
         if (!$this->needVerification($response)) return $response;
 
-        if (!isset($options['cookies']) || !$options['cookies']) {
+        if (empty($options['cookies']) || ! $options['cookies']) {
             throw new Exception('you have to use cookies');
         }
 
-        if (!isset($options['allow_redirects']) || empty($options['allow_redirects'])) {
+        if (empty($options['allow_redirects']) || ! $options['allow_redirects']) {
             throw new Exception('you have to use the allow_redirects options');
         }
 
@@ -87,7 +87,7 @@ class CloudflareMiddleware
      * @param ResponseInterface $response
      * @return RequestInterface
      */
-    public function modifyRequest(RequestInterface $request, ResponseInterface $response)
+    protected function modifyRequest(RequestInterface $request, ResponseInterface $response)
     {
         sleep(8);
 
