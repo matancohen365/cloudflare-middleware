@@ -17,7 +17,10 @@ class CloudflareMiddleware
     /**
      * SERVER_NAME name of the server which Cloudflare uses
      */
-    const SERVER_NAME = 'cloudflare-nginx';
+    const SERVER_NAME = [
+        'cloudflare-nginx',
+        'cloudflare'
+    ];
 
     /**
      * REFRESH_EXPRESSION regular expression used to parse the 'Refresh' header
@@ -79,7 +82,7 @@ class CloudflareMiddleware
     protected function needVerification(ResponseInterface $response)
     {
         return $response->getStatusCode() === static::WAIT_RESPONSE_CODE
-            && $response->getHeaderLine('Server') === static::SERVER_NAME;
+            && in_array($response->getHeaderLine('Server'), static::SERVER_NAME, true);
     }
 
     /**
