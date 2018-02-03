@@ -24,7 +24,8 @@ echo $res->getBody();
 ```
 
 # Thanks 
-[stackoverflowin][2] for [CloudFlare-PHP-Bypass][3]
+* [stackoverflowin][2] for [CloudFlare-PHP-Bypass][3]
+* [KyranRana][4] for [cloudflare-bypass][5]
 
 # License
 -------
@@ -33,3 +34,5 @@ This middleware is licensed under the MIT License - see the LICENSE file for det
 [1]: https://getcomposer.org/
 [2]: https://github.com/stackoverflowin
 [3]: https://github.com/stackoverflowin/CloudFlare-PHP-Bypass
+[4]: https://github.com/KyranRana
+[5]: https://github.com/KyranRana/cloudflare-bypass

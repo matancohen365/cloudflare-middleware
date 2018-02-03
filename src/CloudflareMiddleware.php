@@ -114,7 +114,7 @@ class CloudflareMiddleware
             [
                 'uri' => UriResolver::resolve(
                     $request->getUri(),
-                    $this->getRefreshUri($response)
+                    $this->getRefreshUri($request, $response)
                 ),
                 'body' => '',
                 'method' => 'GET',
@@ -126,16 +126,100 @@ class CloudflareMiddleware
     }
 
     /**
+     * @param \Psr\Http\Message\RequestInterface $request
      * @param \Psr\Http\Message\ResponseInterface $response
      * @return \GuzzleHttp\Psr7\Uri
      * @throws \Exception
      */
-    protected function getRefreshUri(ResponseInterface $response)
+    protected function getRefreshUri(RequestInterface $request, ResponseInterface $response)
     {
         if (preg_match(static::REFRESH_EXPRESSION, $response->getHeaderLine('Refresh'), $matches)) {
             return new Uri($matches[1]);
         }
 
-        throw new Exception('Can not seem to parse the refresh header');
+        return $this->solveJavascriptChallenge($request, $response);
     }
+
+    /**
+     * Try to solve the JavaScript challenge
+     * Thanks to: KyranRana, https://github.com/KyranRana/cloudflare-bypass
+     *
+     * @param \Psr\Http\Message\RequestInterface $request
+     * @param \Psr\Http\Message\ResponseInterface $response
+     * @return \GuzzleHttp\Psr7\Uri
+     * @throws \Exception
+     */
+    protected function solveJavascriptChallenge(RequestInterface $request, ResponseInterface $response)
+    {
+        $content = $response->getBody();
+
+        /*
+         * Source: https://github.com/KyranRana/cloudflare-bypass/blob/master/v2/src/CloudflareBypass/CFBypass.php
+         */
+
+        /*
+         * Extract "jschl_vc" and "pass" params
+         */
+        preg_match_all('/name="\w+" value="(.+?)"/', $content, $matches);
+
+        if (!isset($matches[1]) || !isset($matches[1][1])) {
+            throw new \ErrorException('Unable to fetch jschl_vc and pass values; maybe not protected?');
+        }
+
+        $params = array();
+        list($params['jschl_vc'], $params['pass']) = $matches[1];
+
+        /*
+         * Extract JavaScript challenge logic
+         */
+        preg_match_all('/:[!\[\]+()]+|[-*+\/]?=[!\[\]+()]+/', $content, $matches);
+
+        if (!isset($matches[0]) || !isset($matches[0][0])) {
+            throw new \ErrorException('Unable to find javascript challenge logic; maybe not protected?');
+        }
+
+        try {
+            /*
+             * Convert challenge logic to PHP
+             */
+            $php_code = "";
+            foreach ($matches[0] as $js_code) {
+                // [] causes "invalid operator" errors; convert to integer equivalents
+                $js_code = str_replace(array(
+                    ")+(",
+                    "![]",
+                    "!+[]",
+                    "[]"
+                ), array(
+                    ").(",
+                    "(!1)",
+                    "(!0)",
+                    "(0)"
+                ), $js_code);
+                $php_code .= '$params[\'jschl_answer\']' . ($js_code[0] == ':' ? '=' . substr($js_code, 1) : $js_code) . ';';
+            }
+
+            /*
+             * Eval PHP and get solution
+             */
+            eval($php_code);
+            // Split url into components.
+            $uri = parse_url($request->getUri());
+            // Add host length to get final answer.
+            $params['jschl_answer'] += strlen($uri['host']);
+            /*
+             * 6. Generate clearance link
+             */
+            return new Uri(sprintf("/cdn-cgi/l/chk_jschl?%s",
+                http_build_query($params)
+            ));
+        } catch (Exception $ex) {
+            // PHP evaluation bug; inform user to report bug
+            throw new \ErrorException(sprintf('Something went wrong! Please report an issue: %s', $ex->getMessage()));
+        }
+
+
+    }
+
+
 }
