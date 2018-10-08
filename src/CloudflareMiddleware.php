@@ -50,7 +50,8 @@ class CloudflareMiddleware
 
     /**
      * @param \Psr\Http\Message\RequestInterface $request
-     * @param array $options
+     * @param array                              $options
+     *
      * @return \Psr\Http\Message\RequestInterface
      */
     public function __invoke(RequestInterface $request, array $options = [])
@@ -66,9 +67,10 @@ class CloudflareMiddleware
     }
 
     /**
-     * @param \Psr\Http\Message\RequestInterface $request
-     * @param array $options
+     * @param \Psr\Http\Message\RequestInterface  $request
+     * @param array                               $options
      * @param \Psr\Http\Message\ResponseInterface $response
+     *
      * @return \Psr\Http\Message\RequestInterface|\Psr\Http\Message\ResponseInterface
      * @throws \Exception
      */
@@ -91,6 +93,7 @@ class CloudflareMiddleware
 
     /**
      * @param \Psr\Http\Message\ResponseInterface $response
+     *
      * @return bool
      */
     protected function needVerification(ResponseInterface $response)
@@ -100,8 +103,9 @@ class CloudflareMiddleware
     }
 
     /**
-     * @param \Psr\Http\Message\RequestInterface $request
+     * @param \Psr\Http\Message\RequestInterface  $request
      * @param \Psr\Http\Message\ResponseInterface $response
+     *
      * @return \Psr\Http\Message\RequestInterface
      * @throws \Exception
      */
@@ -112,22 +116,23 @@ class CloudflareMiddleware
         return modify_request(
             $request,
             [
-                'uri' => UriResolver::resolve(
+                'uri'         => UriResolver::resolve(
                     $request->getUri(),
                     $this->getRefreshUri($request, $response)
                 ),
-                'body' => '',
-                'method' => 'GET',
+                'body'        => '',
+                'method'      => 'GET',
                 'set_headers' => [
-                    'Referer' => $request->getUri()->withUserInfo('', ''),
+                    'Referer'    => $request->getUri()->withUserInfo('', ''),
                 ],
             ]
         );
     }
 
     /**
-     * @param \Psr\Http\Message\RequestInterface $request
+     * @param \Psr\Http\Message\RequestInterface  $request
      * @param \Psr\Http\Message\ResponseInterface $response
+     *
      * @return \GuzzleHttp\Psr7\Uri
      * @throws \Exception
      */
@@ -144,8 +149,9 @@ class CloudflareMiddleware
      * Try to solve the JavaScript challenge
      * Thanks to: KyranRana, https://github.com/KyranRana/cloudflare-bypass
      *
-     * @param \Psr\Http\Message\RequestInterface $request
+     * @param \Psr\Http\Message\RequestInterface  $request
      * @param \Psr\Http\Message\ResponseInterface $response
+     *
      * @return \GuzzleHttp\Psr7\Uri
      * @throws \Exception
      */
@@ -168,11 +174,14 @@ class CloudflareMiddleware
 
         $params = array();
         list($params['jschl_vc'], $params['pass']) = $matches[1];
-
+        // Extract CF script tag portion from content.
+        $cf_script_start_pos = strpos($content, 's,t,o,p,b,r,e,a,k,i,n,g,f,');
+        $cf_script_end_pos = strpos($content, '</script>', $cf_script_start_pos);
+        $cf_script = substr($content, $cf_script_start_pos, $cf_script_end_pos - $cf_script_start_pos);
         /*
          * Extract JavaScript challenge logic
          */
-        preg_match_all('/:[!\[\]+()]+|[-*+\/]?=[!\[\]+()]+/', $content, $matches);
+        preg_match_all('/:[\/!\[\]+()]+|[-*+\/]?=[\/!\[\]+()]+/', $cf_script, $matches);
 
         if (!isset($matches[0]) || !isset($matches[0][0])) {
             throw new \ErrorException('Unable to find javascript challenge logic; maybe not protected?');
@@ -196,22 +205,35 @@ class CloudflareMiddleware
                     "(!0)",
                     "(0)"
                 ), $js_code);
-                $php_code .= '$params[\'jschl_answer\']' . ($js_code[0] == ':' ? '=' . substr($js_code, 1) : $js_code) . ';';
+                $php_code .= '$params[\'jschl_answer\']' . ($js_code[0] == ':' ? '=' . substr($js_code,
+                            1) : $js_code) . ';';
             }
 
             /*
              * Eval PHP and get solution
              */
             eval($php_code);
+
+            // toFixed(10).
+            $params['jschl_answer'] = round($params['jschl_answer'], 10);
+
             // Split url into components.
             $uri = parse_url($request->getUri());
+
+            $query = [];
+
+            if (isset($uri['query'])) {
+                parse_str($uri['query'], $query);
+            }
+
+
             // Add host length to get final answer.
             $params['jschl_answer'] += strlen($uri['host']);
             /*
              * 6. Generate clearance link
              */
             return new Uri(sprintf("/cdn-cgi/l/chk_jschl?%s",
-                http_build_query($params)
+                http_build_query(array_merge($params, $query))
             ));
         } catch (Exception $ex) {
             // PHP evaluation bug; inform user to report bug
